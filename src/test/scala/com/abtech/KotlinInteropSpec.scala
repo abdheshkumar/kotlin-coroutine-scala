@@ -1,16 +1,18 @@
 package com.abtech
 
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import com.abtech.api.MyKotlinClass
 import munit.CatsEffectSuite
+
 import scala.concurrent.duration.DurationDouble
 
 final class KotlinInteropSpec extends CatsEffectSuite with KotlinInterop {
   interop =>
   test("make sure IO computes the right result") {
-    val rt = interop.ioRuntimeFromCoroutineDispatchers()
+    val rt: IORuntime = interop.ioRuntimeFromCoroutineDispatchers()
     try {
-      val tsk = testIoRt
+      val tsk: IO[Unit] = testIoRt
       tsk.unsafeRunSync()(rt)
     } finally {
       rt.shutdown()
@@ -19,7 +21,7 @@ final class KotlinInteropSpec extends CatsEffectSuite with KotlinInterop {
 
   test("make sure IO runs kotlin coroutine on computes thread-pool") {
     val myKotlinClass = new MyKotlinClass()
-    val io = interop.ioCoroutine { cont =>
+    val io: IO[String] = interop.ioCoroutine { cont =>
       myKotlinClass.hello("Abdhesh", cont)
     }
     io.map(assertEquals(_, "Hello, Abdhesh!"))
@@ -27,7 +29,7 @@ final class KotlinInteropSpec extends CatsEffectSuite with KotlinInterop {
 
   test("make sure IO runs kotlin coroutine on blocking thread-pool") {
     val myKotlinClass = new MyKotlinClass()
-    val io = interop.ioCoroutineBlocking { cont =>
+    val io: IO[String] = interop.ioCoroutineBlocking { cont =>
       myKotlinClass.hello("Abdhesh", cont)
     }
     io.map(assertEquals(_, "Hello, Abdhesh!"))
@@ -35,14 +37,14 @@ final class KotlinInteropSpec extends CatsEffectSuite with KotlinInterop {
 
   test("make sure IO computes kotlin coroutine context") {
     val myKotlinClass = new MyKotlinClass()
-    val io = interop.ioCoroutine { cont =>
+    val io: IO[String] = interop.ioCoroutine { cont =>
       myKotlinClass.helloWithContext("Abdhesh", cont)
     }
     io.map(assertEquals(_, "Hello, Abdhesh!"))
   }
 
   test("make sure IO computes kotlin coroutine context") {
-    val io = IO.blocking{
+    val io: IO[String] = IO.blocking{
       println(s"Hello, World! ${Thread.currentThread().getName}")
       "Hello, World!"
     }
