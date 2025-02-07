@@ -2,16 +2,28 @@ package com.abtech
 
 import cats.effect.IO
 import kotlin.coroutines.{Continuation, CoroutineContext, EmptyCoroutineContext}
-import kotlinx.coroutines.{CoroutineScopeKt, CoroutineStart}
 import kotlinx.coroutines.future.FutureKt
+import kotlinx.coroutines.{AbstractCoroutine, CoroutineContextKt, CoroutineScopeKt, CoroutineStart}
 
 import java.util.concurrent.CompletableFuture
 import scala.concurrent.Future
-import scala.jdk.FutureConverters._
+import scala.jdk.FutureConverters.*
 
 object KotlinInterop extends KotlinInterop
 
 private trait KotlinInterop extends IoRuntimeFromCoroutineDispatcher {
+
+  final def ioFromCoroutine[A](callCrt: Continuation[? >: A] => AnyRef, context: CoroutineContext = EmptyCoroutineContext.INSTANCE): IO[A] = {
+    IO.async_ { cb =>
+      val newContext = CoroutineContextKt.newCoroutineContext(EmptyCoroutineContext.INSTANCE, context)
+      val coroutine = new AbstractCoroutine[A](context, true, true) {
+        override def onCompleted(value: A): Unit = cb(Right(value))
+
+        override def onCancelled(cause: Throwable, handled: Boolean): Unit = cb(Left(cause))
+      }
+      coroutine.start(CoroutineStart.DEFAULT, coroutine, (_, cont) => callCrt(cont))
+    }
+  }
 
   private final def completableFutureFromCoroutine[A](callCrt: Continuation[? >: A] => AnyRef, context: CoroutineContext = EmptyCoroutineContext.INSTANCE): CompletableFuture[A] = {
     FutureKt.future(

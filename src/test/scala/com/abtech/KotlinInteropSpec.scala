@@ -1,10 +1,12 @@
 package com.abtech
 
 import cats.effect.IO
+import cats.effect.std.UUIDGen
 import cats.effect.unsafe.IORuntime
 import com.abtech.api.MyKotlinClass
 import munit.CatsEffectSuite
 
+import java.util.UUID
 import scala.concurrent.duration.DurationDouble
 
 final class KotlinInteropSpec extends CatsEffectSuite with KotlinInterop {
@@ -49,6 +51,15 @@ final class KotlinInteropSpec extends CatsEffectSuite with KotlinInterop {
       "Hello, World!"
     }
     io.map(assertEquals(_, "Hello, World!"))
+  }
+
+  test("generate uuid") {
+    object MockUUIDGen extends UUIDGen[IO] {
+      override def randomUUID: IO[UUID] = IO.pure(UUID.fromString("12345678-1234-1234-1234-1234567890ab"))
+    }
+    implicit val mockUUIDGen: UUIDGen[IO] = MockUUIDGen
+    val io: IO[String] = UUIDGen[IO].randomUUID.map(_.toString)
+    io.map(println)
   }
 
   private def testIoRt: IO[Unit] = {
